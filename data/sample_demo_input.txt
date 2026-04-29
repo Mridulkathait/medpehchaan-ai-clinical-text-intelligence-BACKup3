@@ -1,0 +1,4 @@
+Patient is a 58-year-old male with diabetes and hypertension.
+He presents with chest pain and fever for 2 days.
+Aspirin and metformin were prescribed.
+ECG and chest X-ray were advised.
