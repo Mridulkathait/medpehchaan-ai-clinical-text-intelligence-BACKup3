@@ -285,13 +285,13 @@ Not for commercial medical applications without proper validation
 ## 📞 Contact
 
 **Project Author**: Mridul Kathait  
-**Institution**: [Your University/College Name]  
-**Course**: [Course Name/Code]  
+**Institution**: Manav Rachna University , Faridabad 
+**Course**: Btech CSE AIML
 **Project**: Class Assignment - AI Clinical Text Intelligence
 
 For questions or feedback:
-- 📧 [Your Email]
-- 🔗 [LinkedIn/GitHub Profile]
+- 📧 Kathaitmridul@gmail.com
+- 🔗 www.linkedin.com/in/mridul-kathait-66a684281
 
 ---
 
