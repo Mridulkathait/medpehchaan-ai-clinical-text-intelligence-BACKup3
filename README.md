@@ -233,6 +233,45 @@ This project demonstrates:
 
 ---
 
+## 🚀 Deployment
+
+### Render Deployment (Recommended)
+
+1. **Push to GitHub**: Upload your project to a GitHub repository
+
+2. **Connect to Render**:
+   - Go to [render.com](https://render.com)
+   - Create a new Web Service
+   - Connect your GitHub repository
+
+3. **Configure Build Settings**:
+   - **Runtime**: Python 3
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `streamlit run app.py --server.port $PORT --server.headless true --server.runOnSave false`
+
+4. **Environment Variables** (Optional):
+   - Add `HF_TOKEN` if using Hugging Face authentication for faster downloads
+
+5. **Deploy**: Click "Create Web Service" and wait for deployment
+
+### Local Development
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run locally
+streamlit run app.py
+```
+
+### Alternative Platforms
+
+- **Streamlit Cloud**: Direct GitHub integration
+- **Heroku**: Requires `Procfile` with `web: streamlit run app.py --server.port $PORT`
+- **Vercel/Netlify**: Not recommended (not optimized for ML workloads)
+
+---
+
 ## 🤝 Contributing
 
 This is a class project, but contributions and feedback are welcome!

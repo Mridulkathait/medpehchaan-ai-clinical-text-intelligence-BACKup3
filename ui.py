@@ -252,7 +252,34 @@ def _render_patient_section(index: int, patient_result: Dict[str, object]) -> No
         </div>
         """, unsafe_allow_html=True)
 
-        # Modern download buttons
+    with st.expander(title, expanded=index == 1):
+        # Metrics cards
+        st.markdown(f"""
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin: 20px 0;">
+            <div style="background: white; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 4px solid {risk_color};">
+                <div style="font-size: 2rem; margin-bottom: 8px;">🏥</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: {risk_color};">{len(patient_result["entities"])}</div>
+                <div style="color: #4a5568; font-size: 0.9rem;">Entities</div>
+            </div>
+            <div style="background: white; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <div style="font-size: 2rem; margin-bottom: 8px;">📝</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #1E3A8A;">{patient_result["preprocessing"]["token_count"]}</div>
+                <div style="color: #4a5568; font-size: 0.9rem;">Tokens</div>
+            </div>
+            <div style="background: white; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <div style="font-size: 2rem; margin-bottom: 8px;">📏</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #1E3A8A;">{patient_result["preprocessing"]["char_count"]}</div>
+                <div style="color: #4a5568; font-size: 0.9rem;">Characters</div>
+            </div>
+            <div style="background: white; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <div style="font-size: 2rem; margin-bottom: 8px;">📊</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #1E3A8A;">{str(patient_result["source"]).replace("_", " ").title()}</div>
+                <div style="color: #4a5568; font-size: 0.9rem;">Source</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Download buttons
         st.markdown('<div style="display: flex; gap: 16px; margin: 24px 0;">', unsafe_allow_html=True)
         col1, col2 = st.columns(2)
         with col1:
@@ -275,29 +302,35 @@ def _render_patient_section(index: int, patient_result: Dict[str, object]) -> No
             )
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # Modern sections with icons
+        # Extracted Medical Entities
+        st.markdown('<div class="card">', unsafe_allow_html=True)
         st.markdown("### 🔍 Extracted Medical Entities")
-        entity_df = build_entity_table(patient_result["entities"])
-        if entity_df.empty:
+        if not patient_result["entities"]:
             st.warning("⚠️ No medical entities detected in this patient record.")
         else:
-            st.dataframe(entity_df, use_container_width=True)
+            st.markdown(_render_entity_badges(patient_result["entities"]), unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
+        # Risk Assessment
+        st.markdown('<div class="card">', unsafe_allow_html=True)
         st.markdown("### 📈 Risk Assessment")
         risk_explanation = patient_result["risk"]["explanation"]
-        if risk_level == "High":
-            st.error(f"🚨 {risk_explanation}")
-        elif risk_level == "Medium":
-            st.warning(f"⚠️ {risk_explanation}")
-        else:
-            st.success(f"✅ {risk_explanation}")
+        risk_class = f'risk-{risk_level.lower()}'
+        st.markdown(f'<div class="{risk_class}" style="padding: 16px; border-radius: 8px; margin: 10px 0;">{risk_explanation}</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
+        # Clinical Insights
+        st.markdown('<div class="card">', unsafe_allow_html=True)
         st.markdown("### 💡 Clinical Insights")
         for insight in patient_result["insights"]:
-            st.markdown(f'<div style="background: rgba(102, 126, 234, 0.1); border-radius: 12px; padding: 12px; margin: 8px 0; border-left: 4px solid #667eea;">• {insight}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="insight-item">💡 {insight}</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
+        # Patient Summary
+        st.markdown('<div class="card">', unsafe_allow_html=True)
         st.markdown("### 📋 Patient Summary")
-        st.info(f"📝 {patient_result['summary']}")
+        st.markdown(f'<div class="summary-box">{patient_result["summary"]}</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown("### 🎨 Highlighted Clinical Notes")
         st.markdown(patient_result["highlighted_html"], unsafe_allow_html=True)
@@ -314,7 +347,24 @@ def _render_patient_section(index: int, patient_result: Dict[str, object]) -> No
             )
 
 
-def _normalize_search_keywords(search_input: str) -> List[str]:
+def _render_entity_badges(entities: List[Dict[str, object]]) -> str:
+    if not entities:
+        return "<p>No entities detected.</p>"
+    
+    badges = []
+    for entity in entities:
+        entity_type = entity.get("label", "").lower()
+        text = entity.get("text", "")
+        confidence = entity.get("confidence", 0)
+        css_class = {
+            "disease": "disease",
+            "symptom": "symptom", 
+            "medication": "medication",
+            "procedure": "procedure"
+        }.get(entity_type, "disease")
+        badges.append(f'<span class="entity-badge {css_class}" title="Confidence: {confidence:.2f}">{text}</span>')
+    
+    return "".join(badges)
     query = (search_input or "").lower().strip()
     return [keyword.strip() for keyword in query.split(",") if keyword.strip()]
 
@@ -391,14 +441,7 @@ def _build_input_signature(
 def run_app() -> None:
     st.set_page_config(
         page_title="MedPehchaan AI+",
-        page_icon="🏥",
-        layout="wide",
-        initial_sidebar_state="expanded",
-        menu_items={
-            'Get Help': 'https://github.com/your-repo',
-            'Report a bug': 'https://github.com/your-repo/issues',
-            'About': 'MedPehchaan AI+ - Intelligent Clinical Text Intelligence System'
-        }
+        layout="wide"
     )
 
     # Custom CSS for exceptionally beautiful and modern look
@@ -412,15 +455,13 @@ def run_app() -> None:
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
-    /* Main background with gradient */
+    /* Main background with clean light */
     .main {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        background-attachment: fixed;
+        background: #F8FAFC;
     }
 
     .stAppViewContainer {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        background-attachment: fixed;
+        background: #F8FAFC;
     }
 
     /* Title styling */
@@ -428,208 +469,146 @@ def run_app() -> None:
         font-family: 'Poppins', sans-serif;
         font-weight: 700;
         font-size: 3rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        color: #1E3A8A;
         text-align: center;
         margin-bottom: 1rem;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
 
     h2, h3 {
         font-family: 'Poppins', sans-serif;
         font-weight: 600;
-        color: #2d3748;
+        color: #1E3A8A;
         margin-top: 2rem;
         margin-bottom: 1rem;
     }
 
     /* Modern button styling */
     .stButton>button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
         color: white;
         border: none;
-        border-radius: 50px;
+        border-radius: 12px;
         padding: 16px 32px;
         font-size: 16px;
         font-weight: 600;
         cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .stButton>button:before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-        transition: left 0.5s;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(30, 58, 138, 0.4);
     }
 
     .stButton>button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
-    }
-
-    .stButton>button:hover:before {
-        left: 100%;
-    }
-
-    .stButton>button:active {
-        transform: translateY(0);
-        box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 8px 25px rgba(30, 58, 138, 0.6);
     }
 
     /* Input fields styling */
     .stTextInput>div>div>input,
     .stTextArea>div>div>textarea,
     .stSelectbox>div>div>div>div>select {
-        border-radius: 20px;
-        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        border: 2px solid #E5E7EB;
         padding: 16px 20px;
-        background: rgba(255,255,255,0.95);
-        backdrop-filter: blur(10px);
+        background: white;
         font-size: 16px;
         transition: all 0.3s ease;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
 
     .stTextInput>div>div>input:focus,
     .stTextArea>div>div>textarea:focus,
     .stSelectbox>div>div>div>div>select:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        transform: translateY(-1px);
+        border-color: #3B82F6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
 
     /* File uploader styling */
     .stFileUploader {
-        border-radius: 20px;
-        border: 2px dashed #cbd5e0;
-        background: rgba(255,255,255,0.9);
-        backdrop-filter: blur(10px);
+        border-radius: 12px;
+        border: 2px dashed #CBD5E1;
+        background: white;
         padding: 20px;
         transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
 
     .stFileUploader:hover {
-        border-color: #667eea;
-        background: rgba(255,255,255,0.95);
+        border-color: #3B82F6;
+        background: #F8FAFC;
     }
 
-    /* Metric cards styling */
-    .stMetric {
-        background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.9) 100%);
-        border-radius: 20px;
+    /* Card styling */
+    .card {
+        background: white;
+        border-radius: 16px;
         padding: 24px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-        border: 1px solid rgba(255,255,255,0.2);
-        backdrop-filter: blur(10px);
-        transition: transform 0.3s ease;
-    }
-
-    .stMetric:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 12px 40px rgba(0,0,0,0.15);
-    }
-
-    /* Container styling */
-    .stContainer {
-        background: rgba(255,255,255,0.95);
-        border-radius: 24px;
-        padding: 32px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255,255,255,0.2);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
         margin: 20px 0;
+        border: 1px solid #E5E7EB;
     }
 
     /* Expander styling */
     .stExpander {
-        background: rgba(255,255,255,0.95);
-        border-radius: 16px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        border: 1px solid rgba(255,255,255,0.2);
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border: 1px solid #E5E7EB;
         margin: 10px 0;
         overflow: hidden;
     }
 
     .stExpander > div:first-child {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #1E3A8A;
         color: white;
         font-weight: 600;
         padding: 16px 20px;
-        border-radius: 16px 16px 0 0;
+        border-radius: 12px 12px 0 0;
     }
 
     /* Dataframe styling */
     .stDataFrame {
-        border-radius: 16px;
+        border-radius: 12px;
         overflow: hidden;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
 
     /* Progress bar styling */
     .stProgress > div > div > div {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
         border-radius: 10px;
     }
 
     /* Alert styling */
     .stAlert {
-        border-radius: 16px;
+        border-radius: 12px;
         border: none;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        backdrop-filter: blur(10px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
 
     /* Tab styling */
     .stTabs [data-baseweb="tab-list"] {
-        background: rgba(255,255,255,0.95);
-        border-radius: 16px 16px 0 0;
+        background: white;
+        border-radius: 12px 12px 0 0;
         padding: 8px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
 
     .stTabs [data-baseweb="tab"] {
-        border-radius: 12px;
+        border-radius: 8px;
         margin: 0 4px;
         transition: all 0.3s ease;
     }
 
     .stTabs [data-baseweb="tab"][aria-selected="true"] {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #1E3A8A;
         color: white;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-    }
-
-    /* Radio button styling */
-    .stRadio > div {
-        background: rgba(255,255,255,0.95);
-        border-radius: 16px;
-        padding: 16px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    }
-
-    /* Sidebar styling */
-    .css-1d391kg {
-        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+        box-shadow: 0 4px 15px rgba(30, 58, 138, 0.3);
     }
 
     /* Success/Warning/Error styling */
     .stSuccess, .stWarning, .stError, .stInfo {
-        border-radius: 16px;
+        border-radius: 12px;
         border: none;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        backdrop-filter: blur(10px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
 
     /* Custom scrollbar */
@@ -638,99 +617,73 @@ def run_app() -> None:
     }
 
     ::-webkit-scrollbar-track {
-        background: rgba(255,255,255,0.1);
+        background: #F1F5F9;
         border-radius: 10px;
     }
 
     ::-webkit-scrollbar-thumb {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #1E3A8A;
         border-radius: 10px;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-    }
-
-    /* Animation for loading */
-    @keyframes pulse {
-        0% { opacity: 1; }
-        50% { opacity: 0.5; }
-        100% { opacity: 1; }
-    }
-
-    .stSpinner > div > div {
-        animation: pulse 1.5s ease-in-out infinite;
-    }
-
-    /* Chart styling */
-    .js-plotly-plot {
-        border-radius: 16px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        overflow: hidden;
+        background: #3B82F6;
     }
 
     /* Download button styling */
     .stDownloadButton>button {
-        background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
-        border-radius: 50px;
+        background: #22C55E;
+        border-radius: 12px;
         padding: 12px 24px;
         font-weight: 600;
         transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(72, 187, 120, 0.4);
+        box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4);
     }
 
     .stDownloadButton>button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(72, 187, 120, 0.6);
+        box-shadow: 0 8px 25px rgba(34, 197, 94, 0.6);
     }
 
-    /* Caption styling */
-    .stCaption {
-        color: #718096;
-        font-style: italic;
-        text-align: center;
-        margin: 16px 0;
+    /* Entity badges */
+    .entity-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin: 2px 4px;
+        color: white;
     }
 
-    /* Header gradient text */
-    .gradient-text {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        font-weight: 700;
-        font-size: 2.5rem;
+    .disease { background-color: #DC2626; }
+    .symptom { background-color: #EA580C; }
+    .medication { background-color: #16A34A; }
+    .procedure { background-color: #7C3AED; }
+
+    /* Risk boxes */
+    .risk-high { background-color: #FEE2E2; border-left: 4px solid #DC2626; color: #991B1B; }
+    .risk-medium { background-color: #FEF3C7; border-left: 4px solid #D97706; color: #92400E; }
+    .risk-low { background-color: #D1FAE5; border-left: 4px solid #059669; color: #065F46; }
+
+    /* Insights styling */
+    .insight-item {
+        background: rgba(59, 130, 246, 0.1);
+        border-radius: 8px;
+        padding: 12px;
+        margin: 8px 0;
+        border-left: 4px solid #3B82F6;
     }
 
-    /* Card hover effects */
-    .hover-card {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .hover-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 40px rgba(0,0,0,0.15);
-    }
-
-    /* Modern form styling */
-    .modern-form {
-        background: rgba(255,255,255,0.95);
-        border-radius: 24px;
-        padding: 32px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255,255,255,0.2);
-        margin: 20px 0;
-    }
-
-    /* Floating animation */
-    @keyframes float {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-10px); }
-    }
-
-    .float-animation {
-        animation: float 3s ease-in-out infinite;
+    /* Summary styling */
+    .summary-box {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border: 1px solid #E5E7EB;
+        font-size: 1.1rem;
+        line-height: 1.6;
     }
 
     </style>
@@ -741,19 +694,10 @@ def run_app() -> None:
     # Modern hero section
     st.markdown("""
     <div style="text-align: center; padding: 40px 20px; margin-bottom: 40px;">
-        <div class="float-animation">
-            <h1 style="font-size: 4rem; margin-bottom: 10px;">🏥 MedPehchaan AI+</h1>
-            <p style="font-size: 1.3rem; color: #4a5568; margin-top: 10px; font-weight: 300;">
-                Intelligent Clinical Text Intelligence System
-            </p>
-        </div>
-        <div style="margin-top: 30px;">
-            <div style="display: inline-block; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); padding: 20px; border-radius: 20px; backdrop-filter: blur(10px);">
-                <p style="color: #2d3748; font-size: 1.1rem; margin: 0; font-weight: 500;">
-                    ⚠️ <strong>Medical Disclaimer:</strong> This tool is for research and educational purposes only. Not for clinical diagnosis.
-                </p>
-            </div>
-        </div>
+        <h1>🏥 MedPehchaan AI+</h1>
+        <p style="font-size: 1.3rem; color: #4a5568; margin-top: 10px; font-weight: 300;">
+            Clinical Text Intelligence System
+        </p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -789,8 +733,8 @@ def run_app() -> None:
     )
 
     with st.container():
-        st.markdown('<div class="modern-form">', unsafe_allow_html=True)
-        st.markdown('<h2 style="color: #2d3748; text-align: center; margin-bottom: 30px;">📥 Input Your Clinical Data</h2>', unsafe_allow_html=True)
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown('<h2 style="text-align: center; margin-bottom: 30px;">📥 Input Your Clinical Data</h2>', unsafe_allow_html=True)
 
         left, right = st.columns([2, 1])
 
@@ -970,16 +914,16 @@ def run_app() -> None:
         st.markdown('<h2 style="text-align: center; margin-bottom: 30px;">📊 Processing Overview</h2>', unsafe_allow_html=True)
         overview_cols = st.columns(4)
         metrics_data = [
-            (results["aggregate_report"]["total_patients_processed"], "👥 Patients", "#667eea"),
-            (results["aggregate_report"]["total_diseases_detected"], "🦠 Diseases", "#e53e3e"),
-            (results["aggregate_report"]["patients_with_no_entities"], "📋 No-Entity Patients", "#718096"),
-            (input_source.replace("_", " ").title(), "📥 Input Source", "#38a169")
+            (results["aggregate_report"]["total_patients_processed"], "👥 Patients", "#1E3A8A"),
+            (results["aggregate_report"]["total_diseases_detected"], "🦠 Diseases", "#DC2626"),
+            (results["aggregate_report"]["patients_with_no_entities"], "📋 No-Entity Patients", "#6B7280"),
+            (input_source.replace("_", " ").title(), "📥 Input Source", "#22C55E")
         ]
 
         for i, (value, label, color) in enumerate(metrics_data):
             with overview_cols[i]:
                 st.markdown(f"""
-                <div style="background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.9) 100%); border-radius: 20px; padding: 24px; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.2);">
+                <div style="background: white; border-radius: 12px; padding: 24px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid #E5E7EB;">
                     <div style="font-size: 2.5rem; margin-bottom: 12px;">{label.split()[0]}</div>
                     <div style="font-size: 2rem; font-weight: 700; color: {color}; margin-bottom: 8px;">{value}</div>
                     <div style="color: #4a5568; font-size: 0.9rem; font-weight: 500;">{label}</div>
@@ -998,23 +942,19 @@ def run_app() -> None:
         patient_tab, aggregate_tab = st.tabs(["👤 Patient-wise View", "📈 Aggregate Analysis"])
 
         with patient_tab:
-            st.markdown('<div style="background: rgba(255,255,255,0.95); border-radius: 16px; padding: 24px; margin: 20px 0; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">', unsafe_allow_html=True)
-            filter_left, filter_right = st.columns([2, 1])
-            with filter_left:
-                st.markdown("### 🔍 Search & Filter")
-                search_term = st.text_input(
-                    "",
-                    key="patient_search_term",
-                    placeholder="Search by patient ID, symptoms, or conditions...",
-                    label_visibility="collapsed"
-                )
-            with filter_right:
-                risk_filter = st.selectbox(
-                    "",
-                    ["All", "High", "Medium", "Low"],
-                    key="patient_risk_filter",
-                    label_visibility="collapsed"
-                )
+            st.markdown('<div class="card">', unsafe_allow_html=True)
+            st.markdown("### 🔍 Search & Filter")
+            search_term = st.text_input(
+                "",
+                key="patient_search_term",
+                placeholder="Search by patient ID, symptoms, or conditions...",
+                label_visibility="collapsed"
+            )
+            risk_filter = st.selectbox(
+                "Filter by Risk Level",
+                ["All", "High", "Medium", "Low"],
+                key="patient_risk_filter"
+            )
             st.markdown('</div>', unsafe_allow_html=True)
 
             filtered_results = []
@@ -1042,6 +982,7 @@ def run_app() -> None:
                     _render_patient_section(index, patient_result)
 
         with aggregate_tab:
+            st.markdown('<div class="card">', unsafe_allow_html=True)
             st.markdown("### 📊 Comprehensive Analysis Dashboard")
 
             # Risk distribution section
@@ -1058,7 +999,7 @@ def run_app() -> None:
                 st.markdown("#### 🎯 Risk Distribution")
                 st.dataframe(risk_df, use_container_width=True, hide_index=True)
                 if not risk_df.empty:
-                    st.bar_chart(risk_df.set_index("Risk Level"), color="#667eea")
+                    st.bar_chart(risk_df.set_index("Risk Level"), color="#1E3A8A")
 
             with risk_cols[1]:
                 st.markdown("#### 🩺 Most Common Symptoms")
@@ -1066,8 +1007,10 @@ def run_app() -> None:
                     st.info("ℹ️ No symptoms detected in the processed patients.")
                 else:
                     st.dataframe(symptom_df, use_container_width=True, hide_index=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
             # Patient summary table
+            st.markdown('<div class="card">', unsafe_allow_html=True)
             st.markdown("### 📋 Patient Summary Overview")
             summary_rows = []
             for patient_result in results["patients"]:
@@ -1083,24 +1026,26 @@ def run_app() -> None:
                     }
                 )
             st.dataframe(pd.DataFrame(summary_rows), use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
             # Evaluation metrics with modern styling
             evaluation_metrics = uploaded_eval_metrics or {}
             if uploaded_eval_metrics:
+                st.markdown('<div class="card">', unsafe_allow_html=True)
                 st.markdown("### 🎯 Model Performance Metrics")
                 metrics_cols = st.columns(5)
                 metrics_info = [
-                    (uploaded_eval_metrics['precision'], "Precision", "#667eea"),
-                    (uploaded_eval_metrics['recall'], "Recall", "#38a169"),
-                    (uploaded_eval_metrics['f1_score'], "F1 Score", "#dd6b20"),
-                    (uploaded_eval_metrics['accuracy'], "Accuracy", "#e53e3e"),
-                    (uploaded_eval_metrics.get('exact_match_rate', 0.0), "Exact Match", "#805ad5")
+                    (uploaded_eval_metrics['precision'], "Precision", "#1E3A8A"),
+                    (uploaded_eval_metrics['recall'], "Recall", "#22C55E"),
+                    (uploaded_eval_metrics['f1_score'], "F1 Score", "#EA580C"),
+                    (uploaded_eval_metrics['accuracy'], "Accuracy", "#DC2626"),
+                    (uploaded_eval_metrics.get('exact_match_rate', 0.0), "Exact Match", "#7C3AED")
                 ]
 
                 for i, (value, label, color) in enumerate(metrics_info):
                     with metrics_cols[i]:
                         st.markdown(f"""
-                        <div style="background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.9) 100%); border-radius: 16px; padding: 20px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+                        <div style="background: white; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
                             <div style="font-size: 1.8rem; font-weight: 700; color: {color}; margin-bottom: 8px;">{value:.1f}%</div>
                             <div style="color: #4a5568; font-size: 0.9rem; font-weight: 500;">{label}</div>
                         </div>
@@ -1127,9 +1072,10 @@ def run_app() -> None:
                     margin=dict(t=50, r=20, b=20, l=20),
                     yaxis=dict(range=[0, 100]),
                     font=dict(size=14),
-                    title_font=dict(size=20, color='#2d3748')
+                    title_font=dict(size=20, color='#1E3A8A')
                 )
                 st.plotly_chart(fig, use_container_width=True)
+                st.markdown('</div>', unsafe_allow_html=True)
             else:
                 st.info(
                     "💡 Upload evaluation data with gold standard labels to see detailed performance metrics."
