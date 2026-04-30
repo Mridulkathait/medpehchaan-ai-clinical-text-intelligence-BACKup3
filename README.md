@@ -248,6 +248,7 @@ This project demonstrates:
    - **Runtime**: Python 3
    - **Build Command**: `pip install -r requirements.txt`
    - **Start Command**: `streamlit run app.py --server.port $PORT --server.headless true --server.runOnSave false`
+   - **Service Name**: `medpehchaan-ai-clinical-text` (to match `https://medpehchaan-ai-clinical-text.onrender.com`)
 
 4. **Environment Variables** (Optional):
    - Add `HF_TOKEN` if using Hugging Face authentication for faster downloads

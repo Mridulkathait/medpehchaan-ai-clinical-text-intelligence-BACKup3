@@ -1,9 +1,10 @@
 services:
   - type: web
-    name: medpehchaan-ai
+    name: medpehchaan-ai-clinical-text
     runtime: python3
     buildCommand: pip install -r requirements.txt
     startCommand: streamlit run app.py --server.port $PORT --server.headless true --server.runOnSave false
     envVars:
       - key: PYTHON_VERSION
         value: 3.11
+    instanceType: free
